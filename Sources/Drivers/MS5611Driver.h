@@ -49,9 +49,9 @@ typedef union {
 bool ms5611Init();
 bool ms5611Reset();
 EPROM_5611* ms5611GetEprom ();
-uint32 ms5611ReadRawTemperature();
-uint32  ms5611ReadTemperature();
-uint32 ms5611ReadRawPressure();
-uint32  ms5611ReadPressure();
+uint32_t ms5611ReadRawTemperature();
+int32_t  ms5611ReadTemperature();
+uint32_t ms5611ReadRawPressure();
+uint32_t  ms5611ReadPressure();
 
 #endif /* MS5611DRIVER_H_ */

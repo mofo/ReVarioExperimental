@@ -14,6 +14,10 @@ uint8 lastPressureRead[3];
 uint8 lastTemperatureRead[3];
 EPROM_5611 epromData;
 
+int32_t dT = 0;
+int32_t TEMP = 0;
+int32_t T2 = 0;
+
 // List of the API these are all synchronous
 
 bool ms5611Init()
@@ -26,15 +30,24 @@ bool ms5611Init()
 
 	CI2C0_SelectSlave(0x77);
 
-	//ms5611Reset();
+	ms5611Reset();
+
+	const TickType_t xDelay = 5 / portTICK_PERIOD_MS;
 
 	// Read the EPROM data once at the beginning
 	for (int i = 0; i <= 7; i ++) {
 		command = PROM_READ | (i << 1);
 		error = CI2C0_SendBlockSynch(&command, 1, &sent);
+
+		// Wait 5ms for the sampling to complete
+		vTaskDelay(xDelay);
+
 		error = CI2C0_RecvBlockSynch(receivedData, 2, &sent);
 		epromData.dataRead[i] = receivedData[0] << 8 | receivedData[1];
 	}
+
+	//epromData.factoryData.refTemperature = 33464;
+	//epromData.factoryData.tempCoeffofTemp = 28312;
 
 	return TRUE;
 }
@@ -48,6 +61,10 @@ bool ms5611Reset()
 	command = RESET;
 	CI2C0_SendBlockSynch(&command, 1, &sent);
 
+	const TickType_t xDelay = 10 / portTICK_PERIOD_MS;
+	// Wait 5ms for the sampling to complete
+	vTaskDelay(xDelay);
+
 	return TRUE;
 }
 
@@ -57,12 +74,12 @@ EPROM_5611* ms5611GetEprom ()
 }
 
 
-uint32 ms5611ReadRawTemperature()
+uint32_t ms5611ReadRawTemperature()
 {
 	word sent;
 	char command;
 	byte  error;
-	uint32 outTemp = 0;
+	uint32_t outTemp = 0;
 
 	const TickType_t xDelay = 10 / portTICK_PERIOD_MS;
 
@@ -86,29 +103,12 @@ uint32 ms5611ReadRawTemperature()
 	return outTemp;
 }
 
-int32 dT = 0;
-
-uint32  ms5611ReadTemperature()
-{
-	int32 Temp = 0;
-	uint32 tempRead = 0;
-	const int32 multiplier = 1 << 8;
-	const int32 multiplier1 = 1 << 23;
-
-	tempRead = ms5611ReadRawTemperature();
-
-	dT = tempRead - (epromData.factoryData.refTemperature * multiplier);
-	Temp = 2000 + (dT * epromData.factoryData.tempCoeffofTemp / multiplier1);
-	return Temp;
-}
-
-
-uint32 ms5611ReadRawPressure()
+uint32_t ms5611ReadRawPressure()
 {
 	word sent;
 	char command;
 	byte  error;
-	uint32 outPress = 0;
+	uint32_t outPress = 0;
 
 	const TickType_t xDelay = 10 / portTICK_PERIOD_MS;
 
@@ -128,22 +128,56 @@ uint32 ms5611ReadRawPressure()
 	return outPress;
 }
 
-uint32  ms5611ReadPressure()
+int32_t  ms5611ReadTemperature()
 {
-	long long OFF = 0;
-	long long SENS = 0;
-	uint32 P = 0;
-	uint32 outPress = ms5611ReadRawPressure();
 
-	const int32 pow2_16 = 1 << 16;
-	const int32 pow2_7 = 1 << 7;
-	const int32 pow2_8 = 1 << 8;
-	const int32 pow2_15 = 1 << 15;
-	const int32 pow2_21 = 1 << 21;
+    uint32_t D2 = ms5611ReadRawTemperature();
 
-	OFF = (epromData.factoryData.pressOffset * pow2_16) + (epromData.factoryData.tempCoeffPressOff * dT) / pow2_7;
-	SENS = (epromData.factoryData.pressSens * pow2_15) + (epromData.factoryData.tempCoeffPressSens * dT) / pow2_8;
-	P = ((outPress * SENS / pow2_21) - OFF) / pow2_15;
+    dT = 0;
+    TEMP = 0;
+    T2 = 0;
 
-	return P;
+    dT = D2 - ((uint32_t)epromData.factoryData.refTemperature << 8);
+
+    int64_t result = (int64_t)dT * (int64_t)epromData.factoryData.tempCoeffofTemp;
+
+    TEMP = 2000 + (result >> 23);
+
+	if (TEMP < 2000)
+	{
+		T2 = (dT * dT) >> 31;
+	}
+
+	return TEMP - T2;
+}
+
+uint32_t  ms5611ReadPressure()
+{
+
+    uint32_t D1 = ms5611ReadRawPressure();
+
+    int64_t OFF = ((uint64_t)epromData.factoryData.pressOffset << 16) + (((uint64_t)epromData.factoryData.tempCoeffPressOff * dT) >> 7);
+    int64_t SENS = ((uint64_t)epromData.factoryData.pressSens << 15) + (((uint64_t)epromData.factoryData.tempCoeffPressSens * dT) >> 8);
+
+    int64_t OFF2 = 0;
+    int64_t SENS2 = 0;
+
+	if (TEMP < 2000)
+	{
+	    OFF2 = 5 * (((TEMP - 2000) * (TEMP - 2000)) >> 1);
+	    SENS2 = 5 * (((TEMP - 2000) * (TEMP - 2000)) >> 2);
+
+		if (TEMP < -1500)
+		{
+		    OFF2 = OFF2 + 7 * ((TEMP + 1500) * (TEMP + 1500));
+		    SENS2 = SENS2 + 11 * (((TEMP + 1500) * (TEMP + 1500)) >> 1);
+		}
+	}
+
+	OFF = OFF - OFF2;
+	SENS = SENS - SENS2;
+
+    int32_t P = (((D1 * SENS) >> 21) - OFF) >> 15;
+
+    return P;
 }

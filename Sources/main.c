@@ -143,10 +143,13 @@ void I2CTestTask( void *pvParameters )
 	myEpromData = ms5611GetEprom();
 
 	while (1) {
+		//uint32_t rawPressure = ms5611ReadRawPressure();
+	    uint32_t rawTemperature = ms5611ReadRawTemperature();
+
 		readTemp = ms5611ReadTemperature();
 		readPress = ms5611ReadPressure();
 
-		AS0_SendBlock((char*)&readPress, 4, &sent);
+		AS0_SendBlock((char*)&readTemp, 4, &sent);
 		// Wait 1s
 		vTaskDelay(xDelay);
 
