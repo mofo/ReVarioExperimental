@@ -23,14 +23,15 @@ int32_t T2 = 0;
 bool ms5611Init()
 {
 	word sent;
-	char command;
-	char receivedData[2];
+	uint8_t command;
+	uint8_t receivedData[2];
 	byte  error;
 	int i = 0;
+	uint16_t temp = 0;
 
 	CI2C0_SelectSlave(0x77);
 
-	ms5611Reset();
+	//ms5611Reset();
 
 	const TickType_t xDelay = 5 / portTICK_PERIOD_MS;
 
@@ -38,13 +39,32 @@ bool ms5611Init()
 	for (int i = 0; i <= 7; i ++) {
 		command = PROM_READ | (i << 1);
 		error = CI2C0_SendBlockSynch(&command, 1, &sent);
+		error = CI2C0_RecvBlockSynch(receivedData, 2, &sent);
+
+		epromData.dataRead[i] = receivedData[0];
+		temp = epromData.dataRead[i] << 8;
+		epromData.dataRead[i] = temp | receivedData[1];
 
 		// Wait 5ms for the sampling to complete
 		vTaskDelay(xDelay);
 
-		error = CI2C0_RecvBlockSynch(receivedData, 2, &sent);
-		epromData.dataRead[i] = receivedData[0] << 8 | receivedData[1];
 	}
+
+#if 0
+
+	for (int i = 7; i >= 0; i --) {
+		command = PROM_READ | (i << 1);
+		error = CI2C0_SendBlockSynch(&command, 1, &sent);
+		error = CI2C0_RecvBlockSynch(receivedData, 2, &sent);
+
+		epromData.dataRead[i] = receivedData[0] << 8 | receivedData[1];
+
+		// Wait 5ms for the sampling to complete
+		vTaskDelay(xDelay);
+
+	}
+
+#endif
 
 	//epromData.factoryData.refTemperature = 33464;
 	//epromData.factoryData.tempCoeffofTemp = 28312;
@@ -153,6 +173,8 @@ int32_t  ms5611ReadTemperature()
 
 uint32_t  ms5611ReadPressure()
 {
+
+	ms5611ReadTemperature();
 
     uint32_t D1 = ms5611ReadRawPressure();
 

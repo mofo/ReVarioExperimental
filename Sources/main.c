@@ -59,6 +59,8 @@ void vAssertCalled( void )
 int i = 0;
 int j = 0;
 
+const float sea_press = 1013.25;
+
 char receivedBuffer [10];
 QueueHandle_t  uart1RcvQueue;
 QueueHandle_t  uart0RcvQueue;
@@ -144,12 +146,12 @@ void I2CTestTask( void *pvParameters )
 
 	while (1) {
 		//uint32_t rawPressure = ms5611ReadRawPressure();
-	    uint32_t rawTemperature = ms5611ReadRawTemperature();
+	    //uint32_t rawTemperature = ms5611ReadRawTemperature();
 
 		readTemp = ms5611ReadTemperature();
 		readPress = ms5611ReadPressure();
 
-		AS0_SendBlock((char*)&readTemp, 4, &sent);
+		AS0_SendBlock((char*)&readPress, 4, &sent);
 		// Wait 1s
 		vTaskDelay(xDelay);
 
