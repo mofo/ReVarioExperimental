@@ -59,7 +59,7 @@ void vAssertCalled( void )
 int i = 0;
 int j = 0;
 
-const float sea_press = 1013.25;
+const double sea_press = 1013.25;
 
 char receivedBuffer [10];
 QueueHandle_t  uart1RcvQueue;
@@ -67,6 +67,12 @@ QueueHandle_t  uart0RcvQueue;
 
 SemaphoreHandle_t dbgUARTDataReady;
 SemaphoreHandle_t btUARTDataReady;
+
+typedef struct {
+	double finalPressure;
+	double altitude;
+	double temperature;
+} SENSOR_DATA;
 
 void btRcvCallback(char *data)
 {
@@ -132,26 +138,44 @@ void debugSerial( void *pvParameters )
 	}
 }
 
-void I2CTestTask( void *pvParameters )
+void altimeterTask( void *pvParameters )
 {
-	uint32 readTemp = 0;
-	uint32 readPress = 0;
+	double temperature;
+	int32_t pressure;
+	int32_t pressureInt;
+	int32_t pressureDiv;
+	double  finalPressure;
+	double altitude;
+
+	SENSOR_DATA sensorReading;
+
 	EPROM_5611 *myEpromData;
 	word sent;
 
-	const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;
+	const TickType_t xDelay = 250 / portTICK_PERIOD_MS;
 
 	ms5611Init();
 	myEpromData = ms5611GetEprom();
 
 	while (1) {
-		//uint32_t rawPressure = ms5611ReadRawPressure();
-	    //uint32_t rawTemperature = ms5611ReadRawTemperature();
 
-		readTemp = ms5611ReadTemperature();
-		readPress = ms5611ReadPressure();
+		temperature = ms5611ReadTemperature();
+		pressure = ms5611ReadPressure();
 
-		AS0_SendBlock((char*)&readPress, 4, &sent);
+		pressureInt = pressure / 100;
+		pressureDiv = pressure - pressureInt * 100;
+		finalPressure = (double)pressure / 100;
+
+		altitude = ms5611GetAltitude(finalPressure, sea_press);
+
+		sensorReading.altitude = altitude;
+		sensorReading.finalPressure = finalPressure;
+		sensorReading.temperature = temperature;
+
+		int dimension = sizeof (sensorReading);
+		AS0_SendBlock((char*)&sensorReading, dimension, &sent);
+		//AS0_SendBlock((char*)&temperature, 4, &sent);
+
 		// Wait 1s
 		vTaskDelay(xDelay);
 
@@ -192,7 +216,7 @@ int main(void)
 #else
 	// This is to bringup I2C
 
-	xTaskCreate( I2CTestTask,				/* The function that implements the task. */
+	xTaskCreate( altimeterTask,				/* The function that implements the task. */
 				"I2C", 								/* The text name assigned to the task - for debug only as it is not used by the kernel. */
 				configMINIMAL_STACK_SIZE, 			/* The size of the stack to allocate to the task.  Not actually used as a stack in the Win32 simulator port. */
 				NULL,								/* The parameter passed to the task - not used in this example. */

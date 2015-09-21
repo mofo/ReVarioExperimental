@@ -50,8 +50,11 @@ bool ms5611Init();
 bool ms5611Reset();
 EPROM_5611* ms5611GetEprom ();
 uint32_t ms5611ReadRawTemperature();
-int32_t  ms5611ReadTemperature();
+double  ms5611ReadTemperature();
 uint32_t ms5611ReadRawPressure();
-uint32_t  ms5611ReadPressure();
+int32_t  ms5611ReadPressure();
+
+double ms5611GetAltitude(double pressure, double seaLevelPressure);
+double ms5611GetSeaLevel(double pressure, double altitude);
 
 #endif /* MS5611DRIVER_H_ */
