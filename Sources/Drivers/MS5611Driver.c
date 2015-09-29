@@ -108,7 +108,7 @@ uint32_t ms5611ReadRawTemperature()
 
 	const TickType_t xDelay = 10 / portTICK_PERIOD_MS;
 
-	command = CONVERT_D2_1024;
+	command = CONVERT_D2_4096;
 	error = CI2C0_SendBlockSynch(&command, 1, &sent);
 
 	// Wait 10ms for the sampling to complete
@@ -137,7 +137,7 @@ uint32_t ms5611ReadRawPressure()
 
 	const TickType_t xDelay = 10 / portTICK_PERIOD_MS;
 
-	command = CONVERT_D1_1024;
+	command = CONVERT_D1_4096;
 	error = CI2C0_SendBlockSynch(&command, 1, &sent);
 
 	// Wait 10ms for the sampling to complete
