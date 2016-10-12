@@ -74,6 +74,37 @@ typedef struct {
 	double temperature;
 } SENSOR_DATA;
 
+typedef struct {
+	double q; //process noise covariance
+	double r; //measurement noise covariance
+	double x; //value
+	double p; //estimation error covariance
+	double k; //kalman gain
+} kalman_state;
+
+kalman_state kalman_init(double q, double r, double p, double intial_value)
+{
+	kalman_state result;
+	result.q = q;
+	result.r = r;
+	result.p = p;
+	result.x = intial_value;
+
+	return result;
+}
+
+void kalman_update(kalman_state* state, double measurement)
+{
+	//prediction update
+	//omit x = x
+	state->p = state->p + state->q;
+
+	//measurement update
+	state->k = state->p / (state->p + state->r);
+	state->x = state->x + state->k * (measurement - state->x);
+	state->p = (1 - state->k) * state->p;
+}
+
 void btRcvCallback(char *data)
 {
 	i++;
@@ -138,6 +169,16 @@ void debugSerial( void *pvParameters )
 	}
 }
 
+void spiTestTask( void *pvParameters )
+{
+	SM1_TComData SPIdata = 0x00;
+
+	while (1) {
+		SPIdata += SPIdata;
+		SM1_SendChar(SPIdata);
+	}
+}
+
 void altimeterTask( void *pvParameters )
 {
 	double temperature;
@@ -151,6 +192,8 @@ void altimeterTask( void *pvParameters )
 
 	EPROM_5611 *myEpromData;
 	word sent;
+
+	SM1_TComData SPIdata = 0x01;
 
 	const TickType_t xDelay = 250 / portTICK_PERIOD_MS;
 
@@ -175,8 +218,11 @@ void altimeterTask( void *pvParameters )
 		int dimension = sizeof (sensorReading);
 		AS0_SendBlock((char*)&sensorReading, dimension, &sent);
 		//AS0_SendBlock((char*)&temperature, 4, &sent);
-
 		// Wait 1s
+
+		SPIdata = SPIdata + 1;
+		SM1_SendChar(SPIdata);
+
 		vTaskDelay(xDelay);
 
 	}
@@ -215,14 +261,12 @@ int main(void)
 
 #else
 	// This is to bringup I2C
-
 	xTaskCreate( altimeterTask,				/* The function that implements the task. */
 				"I2C", 								/* The text name assigned to the task - for debug only as it is not used by the kernel. */
 				configMINIMAL_STACK_SIZE, 			/* The size of the stack to allocate to the task.  Not actually used as a stack in the Win32 simulator port. */
 				NULL,								/* The parameter passed to the task - not used in this example. */
 				( tskIDLE_PRIORITY + 2 ), 	/* The priority assigned to the task. */
 				NULL );								/* The task handle is not required, so NULL is passed. */
-
 #endif
 
 	/* Start the tasks and timer running. */

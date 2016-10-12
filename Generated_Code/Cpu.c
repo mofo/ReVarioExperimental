@@ -183,7 +183,8 @@ void __init_hardware(void)
                 SIM_CLKDIV1_OUTDIV2(0x01) |
                 SIM_CLKDIV1_OUTDIV4(0x03); /* Set the system prescalers to safe value */
   /* SIM_SCGC5: PORTE=1,PORTC=1,PORTB=1,PORTA=1 */
-  SIM_SCGC5 |= SIM_SCGC5_PORTC_MASK |
+  SIM_SCGC5 |= SIM_SCGC5_PORTD_MASK |
+		  	   SIM_SCGC5_PORTC_MASK |
                SIM_SCGC5_PORTB_MASK |
                SIM_SCGC5_PORTA_MASK;   /* Enable clock gate for ports to enable pin routing */
   if ((PMC_REGSC & PMC_REGSC_ACKISO_MASK) != 0x0U) {

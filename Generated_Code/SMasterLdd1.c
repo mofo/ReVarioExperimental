@@ -186,7 +186,7 @@ LDD_TDeviceData* SMasterLdd1_Init(LDD_TUserData *UserDataPtr)
   /* Interrupt vector(s) allocation */
   /* {Default RTOS Adapter} Set interrupt vector: IVT is static, ISR parameter is passed by the global variable */
   INT_SPI0__DEFAULT_RTOS_ISRPARAM = DeviceDataPrv;
-  DeviceDataPrv->TxCommand = 0x80000000U; /* Initialization of current Tx command */
+  DeviceDataPrv->TxCommand = 0x003F0000; /* Initialization of current Tx command */
   DeviceDataPrv->ErrFlag = 0x00U;      /* Clear error flags */
   /* Clear the receive counters and pointer */
   DeviceDataPrv->InpRecvDataNum = 0x00U; /* Clear the counter of received characters */
@@ -224,6 +224,14 @@ LDD_TDeviceData* SMasterLdd1_Init(LDD_TUserData *UserDataPtr)
                )) | (uint32_t)(
                 PORT_PCR_MUX(0x02)
                ));
+
+  /* PORTD_PCR4: ISF=0,MUX=2 */
+  PORTD_PCR4 = (uint32_t)((PORTD_PCR4 & (uint32_t)~(uint32_t)(
+                PORT_PCR_ISF_MASK |
+                PORT_PCR_MUX(0x05)
+               )) | (uint32_t)(
+                PORT_PCR_MUX(0x02)
+               ));
   /* SPI0_MCR: MSTR=0,CONT_SCKE=0,DCONF=0,FRZ=0,MTFE=0,PCSSE=0,ROOE=1,??=0,??=0,PCSIS=0,DOZE=0,MDIS=0,DIS_TXF=0,DIS_RXF=0,CLR_TXF=0,CLR_RXF=0,SMPL_PT=0,??=0,??=0,??=0,??=0,??=0,??=0,??=0,HALT=1 */
   SPI0_MCR = SPI_MCR_DCONF(0x00) |
              SPI_MCR_ROOE_MASK |
@@ -234,7 +242,7 @@ LDD_TDeviceData* SMasterLdd1_Init(LDD_TUserData *UserDataPtr)
   SPI0_MCR = SPI_MCR_MSTR_MASK |
              SPI_MCR_DCONF(0x00) |
              SPI_MCR_ROOE_MASK |
-             SPI_MCR_PCSIS(0x00) |
+             SPI_MCR_PCSIS(0x02) |
              SPI_MCR_DIS_TXF_MASK |
              SPI_MCR_DIS_RXF_MASK |
              SPI_MCR_CLR_TXF_MASK |
@@ -244,8 +252,6 @@ LDD_TDeviceData* SMasterLdd1_Init(LDD_TUserData *UserDataPtr)
   /* SPI0_CTAR0: DBR=1,FMSZ=7,CPOL=0,CPHA=1,LSBFE=1,PCSSCK=0,PASC=0,PDT=2,PBR=3,CSSCK=1,ASC=1,DT=1,BR=2 */
   SPI0_CTAR0 = SPI_CTAR_DBR_MASK |
                SPI_CTAR_FMSZ(0x07) |
-               SPI_CTAR_CPHA_MASK |
-               SPI_CTAR_LSBFE_MASK |
                SPI_CTAR_PCSSCK(0x00) |
                SPI_CTAR_PASC(0x00) |
                SPI_CTAR_PDT(0x02) |
